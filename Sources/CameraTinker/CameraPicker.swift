@@ -1,0 +1,57 @@
+// Copyright (c) 1868 Charles Babbage
+// Found amongst his effects by r0ml
+
+import SwiftUI
+import AVFoundation
+
+public struct CameraPicker : View {
+  @Binding var cameraName : String
+
+  public init(cameraName: Binding<String>) {
+    _cameraName = cameraName
+  }
+
+  public var body : some View {
+#if os(macOS) || targetEnvironment(macCatalyst)
+    Picker(selection: $cameraName, label: Text("Choose a camera") ) {
+      ForEach( cameraList, id: \.self) { cn in
+        Button( cn , action: {
+          log.debug("camera \(cn)")
+        } )
+      }
+    }
+    #else
+    EmptyView()
+#endif
+  }
+
+#if os(iOS)
+  private var _cameraList : [AVCaptureDevice] { get {
+    let aa = ProcessInfo.processInfo
+    let bb = aa.isiOSAppOnMac || aa.isMacCatalystApp
+    let availableDeviceTypes : [AVCaptureDevice.DeviceType] = [.builtInTrueDepthCamera, .builtInDualWideCamera, .builtInDualCamera, .builtInWideAngleCamera, .builtInUltraWideCamera, .builtInTelephotoCamera, .builtInTripleCamera]
+    let foundVideoDevices = AVCaptureDevice.DiscoverySession.init(deviceTypes: availableDeviceTypes, mediaType: .video , position: bb ? .unspecified :  /* frontCamera ? .front : */ .back).devices
+    return foundVideoDevices
+  }}
+#elseif os(macOS)
+  private var _cameraList : [AVCaptureDevice] { get {
+    return AVCaptureDevice.DiscoverySession(deviceTypes: [AVCaptureDevice.DeviceType.builtInWideAngleCamera, .externalUnknown], mediaType: .video, position: AVCaptureDevice.Position.unspecified).devices
+  } }
+#endif
+
+  var cameraList : [String] { get {
+    return _cameraList.map(\.localizedName)
+  }}
+
+  var device : AVCaptureDevice? {
+    if let videoCaptureDevice = _cameraList.first(where : { $0.localizedName == cameraName })  {
+      return videoCaptureDevice
+    } else {
+      if let a = _cameraList.first {
+        cameraName = a.localizedName
+        return a
+      }
+    }
+    return nil
+  }
+}
