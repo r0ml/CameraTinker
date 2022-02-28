@@ -59,7 +59,7 @@ public actor ARData {
 public final class ARReceiver<T : RecognizerProtocol>: NSObject, ARSessionDelegate, CameraImageReceiver,
 // FIXME: check this
 @unchecked Sendable {
-  public var textureUpdater = TextureUpdater<ARReceiver>()
+  public var textureUpdater = TextureUpdater()
 
   public typealias CameraData = ARData
 
@@ -67,6 +67,8 @@ public final class ARReceiver<T : RecognizerProtocol>: NSObject, ARSessionDelega
   var arSession = ARSession()
 //  var f : ((ARData) -> ())?
   public var recognizer : T
+
+  public var aspect : CGSize = .zero
 
   public init(_ r : T) {
     recognizer = r

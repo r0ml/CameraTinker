@@ -81,7 +81,7 @@ struct FourCorners_Preview : PreviewProvider {
       Image("ClassicalRhetoric").resizable().scaledToFit().cornersOverlay(CGSize(width: 0.5, height: 0.3))
 
       // PreviewView(recognizer: recognizer )
-      PreviewView(imageReceiver: &cm)
+      PreviewView(imageReceiver: cm)
         .previewDevice("iPhone X").background(Color.blue)
       //  PreviewView(recognizer: recognizder)
       //        .previewDevice("iPad Pro (12.9-inch) (4th generation)")

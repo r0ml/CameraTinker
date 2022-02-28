@@ -65,9 +65,10 @@ final public class CameraManager<T : RecognizerProtocol> : NSObject, CameraImage
   var thePixelFormat = MTLPixelFormat.bgra8Unorm_srgb // could be bgra8Unorm_srgb
   var frameTexture : MTLTexture?
  */
-  public var textureUpdater = TextureUpdater<CameraManager>()
+  public var textureUpdater = TextureUpdater()
   
   var stabilizer = SceneStabilizer()
+  public var aspect : CGSize
 
   public typealias CameraData = ImageWithDepth
   
@@ -89,7 +90,13 @@ final public class CameraManager<T : RecognizerProtocol> : NSObject, CameraImage
     stopMonitoring()
   }
   
-  
+  func setAspect() {
+    if let c = _camera {
+      aspect = CMVideoFormatDescriptionGetPresentationDimensions(c.activeFormat.formatDescription, usePixelAspectRatio: true, useCleanAperture: true)
+    }
+    print("camera size: \(aspect)")
+  }
+
   public var _camera : AVCaptureDevice? {
     get {
       CameraPicker(cameraName: $cameraName).device // cameraNamed(cameraName)
@@ -102,12 +109,14 @@ final public class CameraManager<T : RecognizerProtocol> : NSObject, CameraImage
   
   @MainActor public init( _ r : T) {
     recognizer = r
+    aspect = CGSize.zero
     super.init()
     
     guard let _ = _camera else { return }
     //    recognizer.cameraSettings(self)
     // FIXME: this probably shouldn't be here, because it gets invoked when the ManualEntry is repainted.
     // cameraDidChange()
+    setAspect()
   }
   
 #if os(iOS)
@@ -372,7 +381,11 @@ extension CameraManager {
   @MainActor func cameraDidChange() {
     log.debug("\(#function)")
     guard let camera = _camera else { return }
+
+
     
+
+
     // if the camera changed, the inputs are different -- but presumably the outputs are still OK
     captureSession.inputs.forEach { captureSession.removeInput($0) }
     captureSession.outputs.forEach { captureSession.removeOutput($0) }
@@ -500,6 +513,8 @@ extension CameraManager {
         }
       }
     }
+
+    setAspect()
   }
   
   @MainActor private var videoOrientation : AVCaptureVideoOrientation {

@@ -47,9 +47,10 @@ final class CameraStateObject : NSObject, ObservableObject {
   @Published var cameraState : CameraState = .uninitialized
 }
 
+/*
 class AspectObject : NSObject, ObservableObject {
   @Published var aspect : CGSize = CGSize(width: 1, height: 1)
-}
+}*/
 
 @MainActor public struct PreviewView<U : CameraImageReceiver> : View {
 
@@ -58,14 +59,27 @@ class AspectObject : NSObject, ObservableObject {
   /// Since the aspect ratio needs to be updated when I found out what the camera image
   /// aspect ratio is, this cannot be a `@State` variable.  It must be an `@ObservedObject`
   /// if it gets set from some exogenous source.
-  @ObservedObject var aspect = AspectObject()
+
+//  @State var aspect : CGSize?
   @ObservedObject var cameraState = CameraStateObject()
 
   var imageReceiver : U
+#if os(macOS)
+  var regularVerticalSizeClass = true
+#elseif os(iOS)
+  // Placing these here causes this view (and its subviews) to be regenerated when
+  // the aspect ratios change (rotation or side-by-side)
+  @Environment(\.horizontalSizeClass) var horizontalSizeClass
+  @Environment(\.verticalSizeClass) var verticalSizeClass
 
-  public init(imageReceiver ir : inout U) {
+  var regularVerticalSizeClass : Bool { verticalSizeClass == .regular }
+#endif
+
+
+  public init(imageReceiver ir : U) {
     imageReceiver = ir
-    ir.textureUpdater.view = self
+//    aspect = imageReceiver.aspect
+    // ir.textureUpdater.view = self
   }
 
   func getState() async {
@@ -91,10 +105,11 @@ class AspectObject : NSObject, ObservableObject {
     self.cameraState.cameraState = aa
   }
 
-  public func setAspect(_ s : CGSize) {
+/*  public func setAspect(_ s : CGSize) {
     self.aspect.aspect = s
   }
-  
+  */
+
   public var body : some View {
 
     if self.cameraState.cameraState == .ar {
@@ -123,7 +138,10 @@ class AspectObject : NSObject, ObservableObject {
       imageReceiver.start()
     }()
 
-    log.debug("aspect ratio = \(aspect.aspect.width)x\(aspect.aspect.height)")
+/*    if let aspect = aspect {
+      log.debug("aspect ratio = \(aspect.width)x\(aspect.height)")
+    }
+ */
     return sceneView
   }
 
@@ -148,7 +166,10 @@ class AspectObject : NSObject, ObservableObject {
         .cornersOverlay(imageReceiver.recognizer.sweetSpotSize)
 
         .border(Color.green, width: 5)
-        .aspectRatio( aspect.aspect, contentMode: .fit)
+        .aspectRatio( regularVerticalSizeClass ?
+                      CGSize(width: imageReceiver.aspect.height, height: imageReceiver.aspect.width)
+                      : imageReceiver.aspect
+                      , contentMode: .fit)
         .onAppear {
           Task {
             await getState()
@@ -175,13 +196,13 @@ struct PreviewView_Preview : PreviewProvider {
   static var previews: some View {
     Group {
 #if os(macOS)
-      PreviewView(imageReceiver: &cr)
+      PreviewView(imageReceiver: cr)
         .previewDevice("Mac")
         .previewLayout(.fixed(width: 400, height: 300))
         .background(Color.green)
 #elseif os(iOS)
-      PreviewView(imageReceiver: &cr).previewDevice("iPhone X")
-      PreviewView(imageReceiver: &cr).previewDevice("iPad Pro (12.9-inch) (4th generation)")
+      PreviewView(imageReceiver: cr).previewDevice("iPhone X")
+      PreviewView(imageReceiver: cr).previewDevice("iPad Pro (12.9-inch) (4th generation)")
         .previewLayout(.fixed(width: 1366, height: 1024))
 #endif
     }

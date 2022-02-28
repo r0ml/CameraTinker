@@ -4,11 +4,12 @@
 import Metal
 import CoreVideo
 import SceneKit
+import CoreMedia
 
 #if canImport(SceneKit)
 
-public class TextureUpdater <T : CameraImageReceiver>: @unchecked Sendable {
-  public var view : PreviewView<T>?
+public class TextureUpdater : @unchecked Sendable {
+//  public var view : PreviewView<T>?
   var thePixelFormat = MTLPixelFormat.bgra8Unorm //     bgra8Unorm_srgb // could be bgra8Unorm_srgb
   //  var thePixelFormat = MTLPixelFormat.depth32Float // could be bgra8Unorm_srgb
   public var scenex = SCNScene()
@@ -19,6 +20,8 @@ public class TextureUpdater <T : CameraImageReceiver>: @unchecked Sendable {
 
   public init() {
     cic = CIContext(mtlDevice: device)
+//    let z = CMVideoFormatDescriptionGetPresentationDimensions(backCamera.activeFormat.formatDescription, usePixelAspectRatio: true, useCleanAperture: true)
+//    print("camera size: \(z)")
   }
 
   private func setupTexture(_ s : CGSize) {
@@ -72,12 +75,13 @@ public class TextureUpdater <T : CameraImageReceiver>: @unchecked Sendable {
 
     if frameTexture == nil || frameTexture!.width != CVPixelBufferGetWidth(pixelBuffer) || frameTexture!.height != CVPixelBufferGetHeight(pixelBuffer) {
       setupTexture( CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer)) )
-      let res = CGSize(width: frameTexture!.width, height: frameTexture!.height)
-      Task {
+//      let res = CGSize(width: frameTexture!.width, height: frameTexture!.height)
+/*      Task {
         await MainActor.run {
           view?.setAspect(res)
         }
       }
+ */
     }
     //    if let tx = tx
     // , tx.width == CVPixelBufferGetWidth(pixelBuffer)   // making sure the frame texture matches the pixel buffer (could be off for a frame or two following resizing)
@@ -101,12 +105,13 @@ public class TextureUpdater <T : CameraImageReceiver>: @unchecked Sendable {
     if frameTexture == nil || CGFloat(frameTexture!.width) != siz.width || CGFloat(frameTexture!.height) != siz.height {
       log.debug("setup texture \(siz.width)x\(siz.height)")
       setupTexture(siz)
-      let res = CGSize(width: frameTexture!.width, height: frameTexture!.height)
-      Task {
+//      let res = CGSize(width: frameTexture!.width, height: frameTexture!.height)
+/*      Task {
         await MainActor.run {
           view?.setAspect(res)
         }
       }
+ */
     }
     cic.render(p, to: frameTexture!, commandBuffer: nil, bounds: p.extent, colorSpace: CGColorSpace(name: CGColorSpace.linearSRGB)! )
   }
