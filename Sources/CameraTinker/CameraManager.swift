@@ -270,8 +270,8 @@ extension CameraManager {
   
   func startMonitoring() {
     do {
-      defer { _camera?.unlockForConfiguration() }
-      try _camera?.lockForConfiguration()
+//      defer { _camera?.unlockForConfiguration() }
+//      try _camera?.lockForConfiguration()
       captureSession.startRunning()
     } catch(let e) {
       log.error("startMonitoring \(e.localizedDescription)" )
@@ -353,12 +353,17 @@ extension CameraManager {
   public func zoom(_ factor : CGFloat) {
     log.debug("\(#function)")
 #if os(iOS)
-    if let d = captureSession.inputs.first as? AVCaptureDeviceInput {
+    if let d = _camera { // captureSession.inputs.first as? AVCaptureDeviceInput {
       do {
-        try d.device.lockForConfiguration()
-        d.device.videoZoomFactor = factor
-        d.device.unlockForConfiguration()
-        localLog.debug("zooming at \(d.device.videoZoomFactor)")
+        try d.lockForConfiguration()
+        d.videoZoomFactor = factor
+
+        while(d.isRampingVideoZoom) {
+          print("ramping")
+        }
+
+        d.unlockForConfiguration()
+        localLog.debug("zooming at \(d.videoZoomFactor)")
       } catch(let e) {
         localLog.error("locking video for configuration \(e.localizedDescription)")
       }

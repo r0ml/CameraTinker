@@ -7,7 +7,7 @@ import CoreImage
 import Vision
 
 public protocol RecognizerProtocol {
-  associatedtype Recognized
+  //  associatedtype Recognized
 
   /** This will perform whatever image processing is desired for this recognizer */
   func scanImage(_ ciImage: ImageWithDepth) async
