@@ -4,13 +4,12 @@
 import Foundation
 import CoreGraphics
 
+/** A `Recognizer` which does nothing */
 public actor NullRecognizer : RecognizerProtocol, Sendable {
   public func scanImage(_ ciImage: ImageWithDepth) async {
-
   }
 
   public init() {
-
   }
 
   public let sweetSpotSize = CGSize(width: 1, height: 1)

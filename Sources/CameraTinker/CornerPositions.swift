@@ -1,10 +1,5 @@
-//
-//  CornerPositions.swift
-//  Librorum Framework
-//
-//  Created by Robert Lefkowitz on 2/23/22.
-//  Copyright © 2022 Sharper than Knot. All rights reserved.
-//
+// Copyright (c) 1868 Charles Babbage
+// Found amongst his effects by r0ml
 
 import Foundation
 import CoreGraphics

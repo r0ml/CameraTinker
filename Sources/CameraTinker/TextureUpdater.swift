@@ -6,11 +6,8 @@ import CoreVideo
 import SceneKit
 import CoreMedia
 
-#if canImport(SceneKit)
-
 public class TextureUpdater : @unchecked Sendable {
-//  public var view : PreviewView<T>?
-  var thePixelFormat = MTLPixelFormat.bgra8Unorm //     bgra8Unorm_srgb // could be bgra8Unorm_srgb
+  var thePixelFormat = MTLPixelFormat.bgra8Unorm
   //  var thePixelFormat = MTLPixelFormat.depth32Float // could be bgra8Unorm_srgb
   public var scenex = SCNScene()
   var cic : CIContext
@@ -20,8 +17,6 @@ public class TextureUpdater : @unchecked Sendable {
 
   public init() {
     cic = CIContext(mtlDevice: device)
-//    let z = CMVideoFormatDescriptionGetPresentationDimensions(backCamera.activeFormat.formatDescription, usePixelAspectRatio: true, useCleanAperture: true)
-//    print("camera size: \(z)")
   }
 
   private func setupTexture(_ s : CGSize) {
@@ -60,62 +55,34 @@ public class TextureUpdater : @unchecked Sendable {
       #endif
       depthScene.background.contentsTransform = SCNMatrix4MakeRotation( pi, 0, 0, 1)
 */
-
-
-
     // this when AR
     //    scenex.background.contentsTransform = SCNMatrix4MakeScale(1, -1, 1) // left-right and up-down mirroring when AR
   }
 }
 
-
-  /* I don't use the front camera -- it can't focus */
-  public func globalUpdateTexture(_ pixelBuffer : CVPixelBuffer) {
+  // I don't use the front camera -- it can't focus
+  public func updateTextureBuffer(_ pixelBuffer : CVPixelBuffer) {
     let bpr = CVPixelBufferGetBytesPerRow(pixelBuffer)
 
     if frameTexture == nil || frameTexture!.width != CVPixelBufferGetWidth(pixelBuffer) || frameTexture!.height != CVPixelBufferGetHeight(pixelBuffer) {
       setupTexture( CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer)) )
-//      let res = CGSize(width: frameTexture!.width, height: frameTexture!.height)
-/*      Task {
-        await MainActor.run {
-          view?.setAspect(res)
-        }
-      }
- */
     }
-    //    if let tx = tx
-    // , tx.width == CVPixelBufferGetWidth(pixelBuffer)   // making sure the frame texture matches the pixel buffer (could be off for a frame or two following resizing)
-    //    {
     CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
     if let dd = CVPixelBufferGetBaseAddress(pixelBuffer) {
-      //          print("update texture \(tx.width)x\(tx.height), bytes per row \(bpr), \(CVPixelBufferGetWidth(pixelBuffer))x\(CVPixelBufferGetHeight(pixelBuffer))")
-
       frameTexture!.replace(region: region!, mipmapLevel: 0, withBytes: dd, bytesPerRow: bpr)
       CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly);
     }
     CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly)
-    //    } else {
-    //      fatalError("frameTexture and pixel buffer sizes don't match")
-    //    }
   }
 
-  public func globalUpdateTexture(_ d : CIImage) {
+  public func updateTextureImage(_ d : CIImage) {
     let p = d
     let siz = p.extent.size
     if frameTexture == nil || CGFloat(frameTexture!.width) != siz.width || CGFloat(frameTexture!.height) != siz.height {
       log.debug("setup texture \(siz.width)x\(siz.height)")
       setupTexture(siz)
-//      let res = CGSize(width: frameTexture!.width, height: frameTexture!.height)
-/*      Task {
-        await MainActor.run {
-          view?.setAspect(res)
-        }
-      }
- */
     }
     cic.render(p, to: frameTexture!, commandBuffer: nil, bounds: p.extent, colorSpace: CGColorSpace(name: CGColorSpace.linearSRGB)! )
   }
 
 }
-
-#endif

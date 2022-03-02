@@ -12,6 +12,7 @@ import CoreImage.CIFilterBuiltins
 import Vision
 
 fileprivate let localLog = Logger()
+public let device = MTLCreateSystemDefaultDevice()!
 let cic = CIContext(mtlDevice: device)
 
 #if canImport(AppKit)
@@ -22,16 +23,13 @@ import AppKit
 import UIKit
 #endif
 
-
 #if os(macOS)
 public typealias DeviceOrientation = FakeOrientation
 #elseif os(iOS)
 public typealias DeviceOrientation = UIDeviceOrientation
 #endif
 
-
 public let ubiquityStash = "iCloud.software.tinker.stash"
-public let device = MTLCreateSystemDefaultDevice()!
 
 public enum FakeOrientation {
   case portrait
@@ -50,21 +48,13 @@ public enum FakeOrientation {
 
 #if os(macOS)
 protocol AVCaptureDataOutputSynchronizerDelegate {
-  
 }
 #endif
 
 final public class CameraManager<T : RecognizerProtocol> : NSObject, CameraImageReceiver,
-                                                     AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDelegate,
+AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDelegate,
 // FIXME: I need to check this
 @unchecked Sendable {
-/*  public var view : PreviewView<CameraManager>?
-
-  // for SceneKit (making a MTLTexture to use as a MaterialProperty)
-  var region : MTLRegion?
-  var thePixelFormat = MTLPixelFormat.bgra8Unorm_srgb // could be bgra8Unorm_srgb
-  var frameTexture : MTLTexture?
- */
   public var textureUpdater = TextureUpdater()
   
   var stabilizer = SceneStabilizer()
@@ -72,13 +62,13 @@ final public class CameraManager<T : RecognizerProtocol> : NSObject, CameraImage
 
   public typealias CameraData = ImageWithDepth
   
-  public func start( /*_ perform: @escaping (CameraData) -> () */ ) {
+  public func start() {
     startMonitoring()
   }
 
   @MainActor public func updateTexture(_ d: CameraData) async {
     if let p = d.image.pixelBuffer {
-      textureUpdater.globalUpdateTexture(p)
+      textureUpdater.updateTextureBuffer(p)
     }
   }
   
@@ -91,31 +81,25 @@ final public class CameraManager<T : RecognizerProtocol> : NSObject, CameraImage
   }
   
   func setAspect() {
-    if let c = _camera {
-      aspect = CMVideoFormatDescriptionGetPresentationDimensions(c.activeFormat.formatDescription, usePixelAspectRatio: true, useCleanAperture: true)
-    }
+    if let camera = camera {
+    aspect = CMVideoFormatDescriptionGetPresentationDimensions(camera.activeFormat.formatDescription, usePixelAspectRatio: true, useCleanAperture: true)
     print("camera size: \(aspect)")
+    }
   }
 
-  public var _camera : AVCaptureDevice? {
-    get {
-      CameraPicker(cameraName: $cameraName).device // cameraNamed(cameraName)
-    }
-  }
+  public var camera : AVCaptureDevice?
+//      CameraPicker(cameraName: $cameraName).device // cameraNamed(cameraName)
+
   
-  @AppStorage("camera name") var cameraName : String = "no camera"
+//  @AppStorage("camera name") var cameraName : String = "no camera"
   
   public var recognizer : T
   
-  @MainActor public init( _ r : T) {
+  @MainActor public init(_ c : String, recognizer r : T) {
     recognizer = r
     aspect = CGSize.zero
     super.init()
-    
-    guard let _ = _camera else { return }
-    //    recognizer.cameraSettings(self)
-    // FIXME: this probably shouldn't be here, because it gets invoked when the ManualEntry is repainted.
-    // cameraDidChange()
+    changeCamera(c)
     setAspect()
   }
   
@@ -135,10 +119,8 @@ final public class CameraManager<T : RecognizerProtocol> : NSObject, CameraImage
   
   let captureSession = AVCaptureSession()
   let videoQueue = DispatchQueue(label: "metadata object q")
-  
   let myVideoDataOutput = AVCaptureVideoDataOutput()
-  //  var myPhotoDataOutput = AVCapturePhotoOutput()
-  
+
   let log = Logger()
   
   let scenex = SCNScene()
@@ -155,7 +137,7 @@ final public class CameraManager<T : RecognizerProtocol> : NSObject, CameraImage
   public func captureOutput(_ output: AVCaptureOutput, didOutput: CMSampleBuffer, from: AVCaptureConnection) {
     guard let sb = CMSampleBufferGetImageBuffer(didOutput) else { return }
     let ciImage = CIImage(cvImageBuffer: sb )
-    textureUpdater.globalUpdateTexture(sb) // updating the texture is done to display the camera preview
+    textureUpdater.updateTextureBuffer(sb) // updating the texture is done to display the camera preview
 
     Task {
       if await self.recognizer.isBusy() {
@@ -182,7 +164,6 @@ final public class CameraManager<T : RecognizerProtocol> : NSObject, CameraImage
   
   var bufferCopy : CVPixelBuffer? = nil
   
-  // extension CameraManager : AVCaptureDataOutputSynchronizerDelegate {
   /// This is the delegate function called when capturing both image and depth data
   public func dataOutputSynchronizer(_ synchronizer: AVCaptureDataOutputSynchronizer, didOutput synchronizedDataCollection: AVCaptureSynchronizedDataCollection) {
     let syncedVideoDat: AVCaptureSynchronizedSampleBufferData? = synchronizedDataCollection.synchronizedData(for: myVideoDataOutput) as? AVCaptureSynchronizedSampleBufferData
@@ -204,35 +185,14 @@ final public class CameraManager<T : RecognizerProtocol> : NSObject, CameraImage
        }
        */
       
-      //   let depthPixelBuffer : CVPixelBuffer = syncedDepthData.depthData.depthDataMap
-      //   let dImage = CIImage(cvPixelBuffer: depthPixelBuffer)
-      
       // One can get a CIImage from the depthData, but there is no way to create the AVDepthData from a CIImage !!
       // So, store the AVDepthData, and create the CIImage as needed when accessed.
       let iwd = ImageWithDepth(theImage, depth: syncedDepthData.depthData)
-      // let iwd = ImageWithDepth(theImage, depth: dImage)
+      textureUpdater.updateTextureBuffer(videoPixelBuffer)
 
-      /*
-#if DEBUG
-      if bufferCopy == nil {
-        let _ = CVPixelBufferCreate(kCFAllocatorDefault, CVPixelBufferGetWidth(videoPixelBuffer), CVPixelBufferGetHeight(videoPixelBuffer), CVPixelBufferGetPixelFormatType(videoPixelBuffer), nil, &bufferCopy)
-      }
-      
-      Task {
-        let gg = await iwd.prepImage()!
-        cic.render(gg, to: bufferCopy!)
-        updateTexture(bufferCopy!)
-      }
-      
-#else
-       */
-      textureUpdater.globalUpdateTexture(videoPixelBuffer)
-
-      
-
-        Task.detached {
-          if await self.stabilizer.isSceneStable(pixelBuffer: videoPixelBuffer) {
-            await self.recognizer.scanImage( iwd )
+      Task.detached {
+        if await self.stabilizer.isSceneStable(pixelBuffer: videoPixelBuffer) {
+          await self.recognizer.scanImage( iwd )
         }
       }
       
@@ -240,13 +200,13 @@ final public class CameraManager<T : RecognizerProtocol> : NSObject, CameraImage
               let videoPixelBuffer = CMSampleBufferGetImageBuffer(syncedVideoData.sampleBuffer) {
       // here I have image data but not depth data
       // lots of frames where depth data is not available.
-      textureUpdater.globalUpdateTexture(videoPixelBuffer)
+      textureUpdater.updateTextureBuffer(videoPixelBuffer)
 
       let cii = CIImage(cvImageBuffer: videoPixelBuffer)
       let iwd = ImageWithDepth( cii)
 
-        Task.detached {
-          if await self.stabilizer.isSceneStable(pixelBuffer: videoPixelBuffer) {
+      Task.detached {
+        if await self.stabilizer.isSceneStable(pixelBuffer: videoPixelBuffer) {
           await self.recognizer.scanImage( iwd )
         }
       }
@@ -269,21 +229,13 @@ extension CameraManager {
   }
   
   func startMonitoring() {
-    do {
-//      defer { _camera?.unlockForConfiguration() }
-//      try _camera?.lockForConfiguration()
-      captureSession.startRunning()
-    } catch(let e) {
-      log.error("startMonitoring \(e.localizedDescription)" )
-      return
-    }
+    captureSession.startRunning()
   }
   
   public func scene() -> SCNScene {
     return textureUpdater.scenex
   }
-  
-  
+
   // ==============================================================================
   
   func selectDepthFormat(_ lookupView : AVCaptureDevice) {
@@ -350,46 +302,18 @@ extension CameraManager {
 }
 
 extension CameraManager {
-  public func zoom(_ factor : CGFloat) {
-    log.debug("\(#function)")
-#if os(iOS)
-    if let d = _camera { // captureSession.inputs.first as? AVCaptureDeviceInput {
-      do {
-        try d.lockForConfiguration()
-        d.videoZoomFactor = factor
-
-        while(d.isRampingVideoZoom) {
-          print("ramping")
-        }
-
-        d.unlockForConfiguration()
-        localLog.debug("zooming at \(d.videoZoomFactor)")
-      } catch(let e) {
-        localLog.error("locking video for configuration \(e.localizedDescription)")
-      }
-    }
-#endif
-  }
   
-  /* I don't use the front camera -- it can't focus */
-/*  func updateTexture(_ pixelBuffer : CVPixelBuffer) {
-    textureUpdater.globalUpdateTexture(pixelBuffer)
-  }
-  */
-
   public func processFrame(_ d : CameraData) async {
     await recognizer.scanImage( d )
   }
 }
 
 extension CameraManager {
-  @MainActor func cameraDidChange() {
+  @MainActor public func changeCamera(_ cn : String) {
     log.debug("\(#function)")
-    guard let camera = _camera else { return }
 
-
-    
-
+    guard let cam = Self.getDevice(cn) else { return }
+    camera = cam
 
     // if the camera changed, the inputs are different -- but presumably the outputs are still OK
     captureSession.inputs.forEach { captureSession.removeInput($0) }
@@ -405,7 +329,7 @@ extension CameraManager {
     
     var videoInputx : AVCaptureDeviceInput?
     do {
-      videoInputx = try AVCaptureDeviceInput(device: camera)
+      videoInputx = try AVCaptureDeviceInput(device: cam)
     } catch(let e) {
       Notification.reportError("Unable to obtain video input", e)
     }
@@ -420,7 +344,7 @@ extension CameraManager {
     self.captureSession.addInput(videoInput)
     
     if useDepth {
-      self.selectDepthFormat(camera)
+      self.selectDepthFormat(cam)
     }
     
     let videoDataOutput = myVideoDataOutput
@@ -465,17 +389,6 @@ extension CameraManager {
         captureSession.addOutput(depthDataOutput)
       }
       
-      /*      if let frameDuration = _camera!.activeDepthDataFormat?.videoSupportedFrameRateRanges.first?.minFrameDuration {
-       do {
-       try _camera!.lockForConfiguration()
-       _camera!.activeVideoMinFrameDuration = frameDuration
-       _camera!.unlockForConfiguration()
-       } catch {
-       print("could not lock device for configuration: \(error)")
-       }
-       }
-       */
-      
       if let k = depthDataOutput.connection(with: .depthData), k.isEnabled {
         k.videoOrientation = videoOrientation
         
@@ -491,25 +404,19 @@ extension CameraManager {
     }
 #endif
     
-    //    setVideoOrientation(Self.currentOrientation)
-    //  }
-    
-    //  private func setVideoOrientation( _ o : DeviceOrientation) {
-    
     var vdo : AVCaptureVideoOrientation = .portrait
     switch Self.currentOrientation {
     case .landscapeLeft: vdo = .landscapeRight
     case .landscapeRight: vdo = .landscapeLeft
     default: vdo = .portrait
     }
-    
-    
+
     captureSession.outputs.forEach { n in
       if let nn = n as? AVCaptureVideoDataOutput {
         
         if let conn = nn.connection(with: .video) {
           conn.videoOrientation = vdo
-          
+
           // These seem to do nothing
           // conn.automaticallyAdjustsVideoMirroring = false
           //  conn.isVideoMirrored = true
@@ -534,4 +441,19 @@ extension CameraManager {
       }
     }
   }
+
+
+  static func getDevice(_ s : String) -> AVCaptureDevice? {
+    let list = CameraPicker._cameraList
+    if let videoCaptureDevice = list.first(where : { $0.localizedName == s })  {
+      return videoCaptureDevice
+    } else {
+      if let a = list.first {
+//        cameraName = a.localizedName
+        return a
+      }
+    }
+    return nil
+  }
+
 }

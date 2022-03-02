@@ -65,7 +65,6 @@ public final class ARReceiver<T : RecognizerProtocol>: NSObject, ARSessionDelega
 
   var arData = ARData()
   var arSession = ARSession()
-//  var f : ((ARData) -> ())?
   public var recognizer : T
 
   public var aspect : CGSize = .zero
@@ -73,19 +72,21 @@ public final class ARReceiver<T : RecognizerProtocol>: NSObject, ARSessionDelega
   public init(_ r : T) {
     recognizer = r
     CVMetalTextureCacheCreate(nil, nil, device, nil, &capturedImageTextureCache)
-//    cic = CIContext(mtlDevice: device)
     super.init()
     arSession.delegate = self
 
   }
 
+  @MainActor public func changeCamera(_ x : String) {
+    fatalError("AR camera can't be changed!")
+  }
+  
   // Configure and run the ARKit session.
   public func start(/*_ perform: @escaping (ARData) -> () */ ) {
     guard ARWorldTrackingConfiguration.supportsFrameSemantics([.sceneDepth, .smoothedSceneDepth]) else { return }
     // Enable both the `sceneDepth` and `smoothedSceneDepth` frame semantics.
     let config = ARWorldTrackingConfiguration()
     config.frameSemantics = [.sceneDepth, .smoothedSceneDepth]
-//    f = perform
     arSession.run(config)
   }
 
@@ -122,7 +123,7 @@ public final class ARReceiver<T : RecognizerProtocol>: NSObject, ARSessionDelega
   }
 
   @MainActor public func updateTexture(_ d : CameraData) async {
-    return await textureUpdater.globalUpdateTexture(d.imageAdjustedForOrientation() )
+    return await textureUpdater.updateTextureImage(d.imageAdjustedForOrientation() )
   }
 
   var stabilizer = SceneStabilizer()
@@ -160,10 +161,8 @@ public final class ARReceiver<T : RecognizerProtocol>: NSObject, ARSessionDelega
     if status == kCVReturnSuccess {
       mtlTexture = CVMetalTextureGetTexture(texture!)
     }
-
     return mtlTexture
   }
-
 
   public func processFrame(_ d : CameraData) async {
     let da = await d.imageAdjustedForOrientation()
@@ -172,7 +171,6 @@ public final class ARReceiver<T : RecognizerProtocol>: NSObject, ARSessionDelega
     let idd = ImageWithDepth( da, depthImage: dd )
     await recognizer.scanImage( idd )
   }
-
 }
 
 #endif

@@ -67,6 +67,7 @@ struct FourCorners : View {
   }
 }
 
+/*
 struct FourCorners_Preview : PreviewProvider {
   static var recognizer = NullRecognizer()
   static var cm = CameraManager(recognizer)
@@ -75,7 +76,7 @@ struct FourCorners_Preview : PreviewProvider {
   static var previews: some View {
     Group {
 #if os(macOS)
-      PreviewView(imageReceiver: &cm )
+      PreviewView(imageReceiver: cm )
         .previewDevice("Mac")
 #elseif os(iOS)
       Image("ClassicalRhetoric").resizable().scaledToFit().cornersOverlay(CGSize(width: 0.5, height: 0.3))
@@ -90,3 +91,4 @@ struct FourCorners_Preview : PreviewProvider {
     }
   }
 }
+*/

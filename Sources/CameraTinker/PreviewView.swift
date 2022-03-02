@@ -47,25 +47,20 @@ final class CameraStateObject : NSObject, ObservableObject {
   @Published var cameraState : CameraState = .uninitialized
 }
 
-/*
-class AspectObject : NSObject, ObservableObject {
-  @Published var aspect : CGSize = CGSize(width: 1, height: 1)
-}*/
-
 @MainActor public struct PreviewView<U : CameraImageReceiver> : View {
 
-  @AppStorage("camera name") var cameraName : String = "no camera"
+//  @AppStorage("camera name") var cameraName : String = "no camera"
 
   /// Since the aspect ratio needs to be updated when I found out what the camera image
   /// aspect ratio is, this cannot be a `@State` variable.  It must be an `@ObservedObject`
   /// if it gets set from some exogenous source.
 
-//  @State var aspect : CGSize?
   @ObservedObject var cameraState = CameraStateObject()
+  @Binding var cameraName : String
 
   var imageReceiver : U
 #if os(macOS)
-  var regularVerticalSizeClass = true
+  var regularVerticalSizeClass = false
 #elseif os(iOS)
   // Placing these here causes this view (and its subviews) to be regenerated when
   // the aspect ratios change (rotation or side-by-side)
@@ -76,10 +71,9 @@ class AspectObject : NSObject, ObservableObject {
 #endif
 
 
-  public init(imageReceiver ir : U) {
+  public init(cameraName cn : Binding<String>, imageReceiver ir : U) {
+    _cameraName = cn
     imageReceiver = ir
-//    aspect = imageReceiver.aspect
-    // ir.textureUpdater.view = self
   }
 
   func getState() async {
@@ -105,11 +99,6 @@ class AspectObject : NSObject, ObservableObject {
     self.cameraState.cameraState = aa
   }
 
-/*  public func setAspect(_ s : CGSize) {
-    self.aspect.aspect = s
-  }
-  */
-
   public var body : some View {
 
     if self.cameraState.cameraState == .ar {
@@ -134,26 +123,18 @@ class AspectObject : NSObject, ObservableObject {
   var stabilizer = SceneStabilizer()
 
   var body2 : some View {
-    let _ = {
-      imageReceiver.start()
-    }()
-
-/*    if let aspect = aspect {
-      log.debug("aspect ratio = \(aspect.width)x\(aspect.height)")
-    }
- */
+    let _ = imageReceiver.start()
     return sceneView
   }
 
-  
   var body1 : some View {
      VStack {
         CameraPicker(cameraName: $cameraName)
         sceneView
       }.onChange(of: cameraName) {z in
-        (imageReceiver as? CameraManager<U.Recognizer>)?.cameraDidChange()
+        imageReceiver.changeCamera(cameraName) //  as? CameraManager<U.Recognizer>)?.cameraDidChange()
       }.onAppear {
-        (imageReceiver as? CameraManager<U.Recognizer>)?.cameraDidChange()
+        imageReceiver.start()
       }
   }
 
@@ -184,12 +165,13 @@ class AspectObject : NSObject, ObservableObject {
 }
 
 struct CameraView_Preview : PreviewProvider {
-  @AppStorage("camera name") static var cameraName : String = "no camera"
+  @State static var cameraName : String = "no camera"
   static var previews : some View {
     CameraPicker(cameraName: $cameraName)
   }
 }
 
+/*
 struct PreviewView_Preview : PreviewProvider {
   static var sweetSpotSize = CGSize(width: 0.5, height: 0.5)
   static var cr = CameraManager(NullRecognizer())
@@ -208,3 +190,4 @@ struct PreviewView_Preview : PreviewProvider {
     }
   }
 }
+*/

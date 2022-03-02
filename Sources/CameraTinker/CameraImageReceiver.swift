@@ -11,7 +11,9 @@ public protocol CameraImageReceiver : Sendable {
 
   var textureUpdater : TextureUpdater { get }
 
-  func start( /* _ perform: @escaping (CameraData) -> () */ )
+  func start()
+  @MainActor func changeCamera(_ x : String)
+
   @MainActor func updateTexture(_ d : CameraData) async
   func isSceneStable(_ d : CameraData) async -> Bool
 

@@ -54,11 +54,11 @@ extension Notification {
 @MainActor public struct StatusView : View {
   private var labelColor : Color {
     get {
-      #if os(iOS)
+#if os(iOS)
       return Color(.label)
-      #elseif os(macOS)
+#elseif os(macOS)
       return Color(.labelColor)
-      #endif
+#endif
     }
   }
   @State private var errorMsg : String = " "
@@ -72,9 +72,9 @@ extension Notification {
       .task {
         for await note in NotificationCenter.default.notifications(named: .reportMessage) {
           self.handle(note)
-          }
-       }
-    }
+        }
+      }
+  }
 
   func handle(_ note : Notification) {
     self.errorMsg = note.userInfo?["msg"] as? String ?? ""

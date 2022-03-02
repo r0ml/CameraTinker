@@ -26,7 +26,7 @@ public struct CameraPicker : View {
   }
 
 #if os(iOS)
-  private var _cameraList : [AVCaptureDevice] { get {
+  static public var _cameraList : [AVCaptureDevice] { get {
     let aa = ProcessInfo.processInfo
     let bb = aa.isiOSAppOnMac || aa.isMacCatalystApp
     let availableDeviceTypes : [AVCaptureDevice.DeviceType] = [.builtInTrueDepthCamera, .builtInDualWideCamera, .builtInDualCamera, .builtInWideAngleCamera, .builtInUltraWideCamera, .builtInTelephotoCamera, .builtInTripleCamera]
@@ -34,24 +34,13 @@ public struct CameraPicker : View {
     return foundVideoDevices
   }}
 #elseif os(macOS)
-  private var _cameraList : [AVCaptureDevice] { get {
+  static public var _cameraList : [AVCaptureDevice] { get {
     return AVCaptureDevice.DiscoverySession(deviceTypes: [AVCaptureDevice.DeviceType.builtInWideAngleCamera, .externalUnknown], mediaType: .video, position: AVCaptureDevice.Position.unspecified).devices
   } }
 #endif
 
   var cameraList : [String] { get {
-    return _cameraList.map(\.localizedName)
+    return Self._cameraList.map(\.localizedName)
   }}
 
-  var device : AVCaptureDevice? {
-    if let videoCaptureDevice = _cameraList.first(where : { $0.localizedName == cameraName })  {
-      return videoCaptureDevice
-    } else {
-      if let a = _cameraList.first {
-        cameraName = a.localizedName
-        return a
-      }
-    }
-    return nil
-  }
 }

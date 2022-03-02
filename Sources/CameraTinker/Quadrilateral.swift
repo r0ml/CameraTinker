@@ -4,37 +4,11 @@
 import SwiftUI
 import CoreGraphics
 
-/*
-/// This displays a circle with a wedge taken out of it (an arc).
-/// Because I use it in a context where I am creating quadrilaterals, the wedge is created using a radius
-/// The wedge has a start angle at 0, and is fills in an arc of 270 degrees.
-/// The constructor also takes two angle adjustments which offset the start angle and fill angle respectively.
-public struct Wedge : View {
-  public var wedgeRadius : CGFloat
-  public var angles : (Angle, Angle)
-
-  public init( radius r : CGFloat, angles a : (Angle, Angle) ) {
-    wedgeRadius = r
-    angles = a
-  }
-
-  public var body : some View {
-    Path { path in
-      path.addRelativeArc(center: CGPoint(x: wedgeRadius, y: wedgeRadius), radius: wedgeRadius, startAngle: angles.0, delta: angles.1)
-      path.addLine(to: CGPoint(x: wedgeRadius, y: wedgeRadius) )
-      path.closeSubpath()
-    }.fill(Color.green)
-      .frame(width: wedgeRadius * 2, height: wedgeRadius * 2)
-  }
-}
-*/
-
 public struct CornerHandle : View {
   public var length : CGFloat
   var corner : CornerPosition
   public var wedgeRadius : CGFloat
   public var angles : (Angle, Angle)
-
 
   init( length l : CGFloat, corner c : CornerPosition, radius r : CGFloat,
         angles a : (Angle, Angle) ) {
@@ -47,7 +21,6 @@ public struct CornerHandle : View {
   let radius : CGFloat = 10
   let lineWidth : CGFloat = 4
 
-
   public var body: some View {
 
     ZStack {
@@ -59,20 +32,18 @@ public struct CornerHandle : View {
         .frame(width: wedgeRadius * 2, height: wedgeRadius * 2)
         .position(x: 0, y: 0)
       ZStack {
-    Path { path in
-      path.move(to: CGPoint(x: 0, y: 0 )) // radius+lineWidth))
-      path.addLine(to: CGPoint(x: length, y: 0 )) // radius+lineWidth))
-//      path.addArc(center: CGPoint(x: length+radius, y: radius), radius: radius, startAngle: Angle(degrees: 0), endAngle: Angle(degrees: 360), clockwise: false)
-//      path.closeSubpath()
-    }
-    .stroke(Color.orange, lineWidth: lineWidth)
+        Path { path in
+          path.move(to: CGPoint(x: 0, y: 0 )) // radius+lineWidth))
+          path.addLine(to: CGPoint(x: length, y: 0 )) // radius+lineWidth))
+        }
+        .stroke(Color.orange, lineWidth: lineWidth)
 
-      Circle().path(in: CGRect(x: length, y: -radius /* ineWidth */ , width: 2*radius, height: 2*radius ))
-      .fill(Color.orange)
-    }.transformEffect(
-      CGAffineTransform(scaleX: (corner == .topLeft || corner == .bottomLeft ? -1 : 1),
-                        y: (corner == .bottomLeft || corner == .bottomRight ? -1 : 1))
-    )
+        Circle().path(in: CGRect(x: length, y: -radius /* ineWidth */ , width: 2*radius, height: 2*radius ))
+          .fill(Color.orange)
+      }.transformEffect(
+        CGAffineTransform(scaleX: (corner == .topLeft || corner == .bottomLeft ? -1 : 1),
+                          y: (corner == .bottomLeft || corner == .bottomRight ? -1 : 1))
+      )
 
     }
     .frame(width: length + 2 * radius + lineWidth, height: 2*radius + 2*lineWidth )
@@ -320,12 +291,6 @@ struct QuadrilateralView : View {
     GeometryReader { g in
       ZStack {
         if let iz = isZooming {
-          /// These are the corner wedges
-        /*
-          Wedge(radius: 25, angles: wedgeAngles( CornerPosition.allCases.firstIndex(of: iz)! ) )
-            .position(zoomedPosition(iz, iz) )
-            .gesture(dragZoomed(iz) )
-          */
           CornerHandle(length: 60, corner: iz,
                        radius: 25,
                        angles: wedgeAngles( CornerPosition.allCases.firstIndex(of: iz)! ))
@@ -346,20 +311,6 @@ struct QuadrilateralView : View {
             .foregroundColor(Color.green)
           ForEach(0..<CornerPosition.allCases.count) { i in
             ZStack {
-/*              Wedge(radius: 25,
-                    angles: wedgeAngles(i) )
-                .position(corners[CornerPosition.allCases[i]])
-                .gesture( drag(CornerPosition.allCases[i]))
-                .onChange(of: isPressingDown) {
-                  z in
-                  log.debug("pressing down: \(z) \(isPressingDown)")
-                  if z {
-                    self.isZooming = CornerPosition.allCases[i]
-                  } else {
-                    self.isZooming = nil
-                  }
-                }
-  */
               CornerHandle(length: 60, corner: CornerPosition.allCases[i],
                            radius: 25, angles: wedgeAngles(i) )
                 .position(corners[CornerPosition.allCases[i]])
@@ -374,7 +325,6 @@ struct QuadrilateralView : View {
                     self.isZooming = nil
                   }
                 }
-
             }
           }
           mask(g.size)
@@ -382,27 +332,7 @@ struct QuadrilateralView : View {
       }
     }.frame(width: offset.width, height: offset.height)
   }
-  
-/*  func xoff(_ i : Int) -> CGPoint {
-    switch(i) {
-    case 0: return CGPoint(x: -45, y: -45)
-    case 1: return CGPoint(x: 45, y: -45)
-    case 2: return CGPoint(x: 45, y: 45)
-    case 3: return CGPoint(x: -45, y: 45)
-    default: return .zero
-    }
-  }
- */
 }
-
-/*
- struct Handle_Preview : PreviewProvider {
-  static var previews: some View {
-    Handle(length: 60, corner: .topRight)
-        Handle(length: 60, corner: .topLeft)
-  }
-}
-*/
 
 struct QuadrilateralView_Preview : PreviewProvider {
   @State static var zoomedCorner : CornerPosition?
@@ -411,6 +341,6 @@ struct QuadrilateralView_Preview : PreviewProvider {
 
   static var previews : some View {
     QuadrilateralView(corners: cc, offset: zz, isZooming: $zoomedCorner)
-.previewInterfaceOrientation(.portraitUpsideDown)
+      .previewInterfaceOrientation(.portraitUpsideDown)
   }
 }

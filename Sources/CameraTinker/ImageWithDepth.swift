@@ -32,11 +32,6 @@ public actor ImageWithDepth {
   private let _depthData : AVDepthData?
   private let _depth : CIImage?
   
-  /*  public init(_ i : CIImage) {
-   image = i
-   }
-   */
-  
   public init(_ i : CIImage, depth: AVDepthData? = nil) {
     image = i
     self._depthData = depth
@@ -105,9 +100,11 @@ public actor ImageWithDepth {
     CVPixelBufferUnlockBaseAddress(croppedBuffer!, .init(rawValue: 0))
     return (minValue, maxValue)
   }
-  
-  
-  
+
+  /*
+
+  /// Modify the image by using the depth to make the high points pop
+
   public func prepImage() -> CIImage? {
     let theImage = image
     
@@ -230,7 +227,8 @@ public actor ImageWithDepth {
      */
     return output
   }
-  
+  */
+
   public func savePicture() {
     let z3 = FileManager.default.url(forUbiquityContainerIdentifier: ubiquityStash)!.appendingPathComponent("Documents")
     if !FileManager.default.fileExists(atPath: z3.path) {
