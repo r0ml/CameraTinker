@@ -16,7 +16,8 @@ public struct CameraPicker : View {
     Picker(selection: $cameraName, label: Text("Choose a camera") ) {
       ForEach( cameraList, id: \.self) { cn in
         Button( cn , action: {
-          log.debug("camera \(cn)")
+          // This never executes
+//          log.debug("camera \(cn)")
         } )
       }
     }
