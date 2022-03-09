@@ -59,7 +59,7 @@ final class CameraStateObject : NSObject, ObservableObject {
   @Binding var cameraName : String
 
   var imageReceiver : U
-#if os(macOS)
+#if os(macOS) || targetEnvironment(macCatalyst)
   var regularVerticalSizeClass = false
 #elseif os(iOS)
   // Placing these here causes this view (and its subviews) to be regenerated when
