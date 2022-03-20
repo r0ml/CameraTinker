@@ -76,6 +76,8 @@ public final class ARReceiver<T : RecognizerProtocol>: NSObject, ARSessionDelega
     return config.videoFormat.imageResolution
   }
 
+  public func setUseDepth(_ : Bool) {  }
+  
   public init(_ r : T) {
     recognizer = r
     super.init()
@@ -106,7 +108,10 @@ public final class ARReceiver<T : RecognizerProtocol>: NSObject, ARSessionDelega
       self.processFrame(sb)
     }
   }
-  
+
+  /// not able to get the capture device in ARSession
+  public var captureDevice : AVCaptureDevice? = nil
+
   public func resume() {
     start()
   }

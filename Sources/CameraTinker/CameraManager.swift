@@ -55,6 +55,7 @@ final public class CameraManager<T : RecognizerProtocol> : NSObject, CameraImage
 AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDelegate,
 // FIXME: I need to check this
 @unchecked Sendable {
+
   public typealias CameraData = ImageWithDepth
 
   public let textureUpdater = TextureUpdater()
@@ -62,6 +63,9 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
 
   public var aspect : CGSize
   public var camera : AVCaptureDevice?
+
+  public var captureDevice : AVCaptureDevice? { return camera  }
+
   public var recognizer : T
 
   public func start() {
@@ -100,6 +104,10 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
   }
 
 
+  public func updateCameraSettings() {
+    
+  }
+
   /*
 #if os(iOS)
   static public var currentOrientation : DeviceOrientation {
@@ -125,6 +133,8 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
   
   let scenex = SCNScene()
   public var useDepth = false
+
+  public func setUseDepth(_ x : Bool) { useDepth = x }
   
 #if os(iOS)
   // iOS can use depth data for getting spines

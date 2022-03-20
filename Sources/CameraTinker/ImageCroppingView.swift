@@ -5,14 +5,15 @@ import SwiftUI
 import AVFoundation
 import Vision
 
+/*
 extension Notification.Name {
-  public static let rectanglePicked = Notification.Name("rectanglePicked")
-
   public func post(_ info : [String:Any]) {
     NotificationCenter.default.post(name: self, object: nil, userInfo: info)
   }
 
 }
+*/
+
 
 public struct ImageCroppingView : View {
   
@@ -26,6 +27,7 @@ public struct ImageCroppingView : View {
   let originalCorners : Quadrilateral
 
   @Binding var candidate : CIImage
+  @State var tempCandidate : CIImage
   @Binding var isActive : Bool
 
   var type : String
@@ -37,6 +39,7 @@ public struct ImageCroppingView : View {
     self.originalCorners = c
     self._candidate = candidate
     self._isActive = isActive
+    self.tempCandidate = candidate.wrappedValue
     self.type = type
   }
 
@@ -68,6 +71,7 @@ public struct ImageCroppingView : View {
 
   public var body : some View {
 
+    HStack {
     VStack {
       xImage(image: cropped ?? original )
         .overlay(
@@ -122,8 +126,7 @@ public struct ImageCroppingView : View {
 
       HStack {
         Button(action: {
-
-          Notification.Name.rectanglePicked.post([type : candidate])
+          candidate = tempCandidate
         }) {
           Text("Use Image")
             .frame(maxWidth: .infinity)
@@ -137,7 +140,7 @@ public struct ImageCroppingView : View {
                                                      width: self.imageOffset.width - 50,
                                                      height: self.imageOffset.height - 50) */
            */
-          candidate = yy
+          tempCandidate = yy
         }) {
           Text("Crop")
             .frame(maxWidth: .infinity)
@@ -157,6 +160,10 @@ public struct ImageCroppingView : View {
             .frame(maxWidth: .infinity)
         }.buttonStyle(MyButtonStyle(bgColor: .blue))
       }
+    }
+      Image(image: XImage(ciImage: tempCandidate))
+        .resizable()
+        .scaledToFit()
     }
   }
 }

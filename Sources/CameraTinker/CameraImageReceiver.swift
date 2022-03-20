@@ -18,11 +18,14 @@ public protocol CameraImageReceiver : Sendable {
   func isSceneStable(_ d : CameraData) -> Bool
 
   func processFrame(_ d : CameraData)
+  var captureDevice : AVCaptureDevice? { get }
 
   func scene() -> SCNScene
   func resume()
   func pause()
 
+  func setUseDepth(_ : Bool)
+  
   var recognizer : Recognizer { get }
   var aspect : CGSize { get }
   var isAR : Bool { get }

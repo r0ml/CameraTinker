@@ -65,9 +65,10 @@ public class TextureUpdater : @unchecked Sendable {
       ft = setupTexture( CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer)) )
     }
     CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
-    if let dd = CVPixelBufferGetBaseAddress(pixelBuffer) {
-      ft!.replace(region: region!, mipmapLevel: 0, withBytes: dd, bytesPerRow: bpr)
-      CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly);
+    if let dd = CVPixelBufferGetBaseAddress(pixelBuffer),
+       let reg = region,
+       let ft = ft {
+      ft.replace(region: reg, mipmapLevel: 0, withBytes: dd, bytesPerRow: bpr)
     }
     CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly)
   }
