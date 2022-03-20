@@ -6,7 +6,7 @@ import SwiftUI
 import SceneKit
 
 #if os(iOS)
-import ARKit
+// import ARKit
 #endif
 
 /**
@@ -47,14 +47,7 @@ final class CameraStateObject : NSObject, ObservableObject {
   @Published var cameraState : CameraState = .uninitialized
 }
 
-@MainActor public struct PreviewView<U : CameraImageReceiver> : View {
-
-//  @AppStorage("camera name") var cameraName : String = "no camera"
-
-  /// Since the aspect ratio needs to be updated when I found out what the camera image
-  /// aspect ratio is, this cannot be a `@State` variable.  It must be an `@ObservedObject`
-  /// if it gets set from some exogenous source.
-
+public struct PreviewView<U : CameraImageReceiver> : View {
   @ObservedObject var cameraState = CameraStateObject()
   @Binding var cameraName : String
 
@@ -64,10 +57,12 @@ final class CameraStateObject : NSObject, ObservableObject {
 #elseif os(iOS)
   // Placing these here causes this view (and its subviews) to be regenerated when
   // the aspect ratios change (rotation or side-by-side)
+
   @Environment(\.horizontalSizeClass) var horizontalSizeClass
   @Environment(\.verticalSizeClass) var verticalSizeClass
 
   var regularVerticalSizeClass : Bool { verticalSizeClass == .regular }
+
 #endif
 
 
@@ -82,16 +77,7 @@ final class CameraStateObject : NSObject, ObservableObject {
       // if I'm in a preview.......
       res = .preview
     } else if await AVCaptureDevice.haveAccess() {
-      #if os(macOS)
-      res = .camera
-      #else
-      if let _ = imageReceiver as? ARReceiver<U.Recognizer>,
-          ARWorldTrackingConfiguration.supportsFrameSemantics([.sceneDepth, .smoothedSceneDepth]) {
-        res = .ar
-      } else {
-        res = .camera
-      }
-      #endif
+      res = imageReceiver.isAR ? .ar : .camera
     } else {
       res = .unauthorized
     }
@@ -123,7 +109,6 @@ final class CameraStateObject : NSObject, ObservableObject {
   var stabilizer = SceneStabilizer()
 
   var body2 : some View {
-    let _ = imageReceiver.start()
     return sceneView
   }
 
@@ -132,7 +117,7 @@ final class CameraStateObject : NSObject, ObservableObject {
         CameraPicker(cameraName: $cameraName)
         sceneView
       }.onChange(of: cameraName) {z in
-        imageReceiver.changeCamera(cameraName) //  as? CameraManager<U.Recognizer>)?.cameraDidChange()
+        imageReceiver.changeCamera(cameraName)
       }.onAppear {
         imageReceiver.start()
       }
@@ -140,22 +125,23 @@ final class CameraStateObject : NSObject, ObservableObject {
 
   var sceneView : some View {
     get {
-        SceneView(scene: imageReceiver.scene()
-                , options: [  .rendersContinuously ]
+      let aspect = imageReceiver.aspect
+      return SceneView(scene: imageReceiver.scene()
+                       , options: [  .rendersContinuously ]
+                       , preferredFramesPerSecond: 20
                 , antialiasingMode: .none
                 , delegate: SceneCoordinator() )
         .cornersOverlay(imageReceiver.recognizer.sweetSpotSize)
-
         .border(Color.green, width: 5)
         .aspectRatio( regularVerticalSizeClass ?
-                      CGSize(width: imageReceiver.aspect.height, height: imageReceiver.aspect.width)
-                      : imageReceiver.aspect
+                      CGSize(width: aspect.height, height: aspect.width)
+                      : aspect
                       , contentMode: .fit)
         .onAppear {
           Task {
             await getState()
+            imageReceiver.resume()
           }
-          imageReceiver.resume()
         }
         .onDisappear {
           imageReceiver.pause()

@@ -4,6 +4,7 @@
 import SwiftUI
 import AVFoundation
 
+/// The drop down list for macOS to select the camera in the event that there are multiple cameras available.
 public struct CameraPicker : View {
   @Binding var cameraName : String
 
@@ -15,13 +16,10 @@ public struct CameraPicker : View {
 #if os(macOS) || targetEnvironment(macCatalyst)
     Picker(selection: $cameraName, label: Text("Choose a camera") ) {
       ForEach( cameraList, id: \.self) { cn in
-        Button( cn , action: {
-          // This never executes
-//          log.debug("camera \(cn)")
-        } )
+        Text(cn)
       }
     }
-    #else
+#else
     EmptyView()
 #endif
   }

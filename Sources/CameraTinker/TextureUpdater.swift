@@ -7,69 +7,66 @@ import SceneKit
 import CoreMedia
 
 public class TextureUpdater : @unchecked Sendable {
-  var thePixelFormat = MTLPixelFormat.bgra8Unorm
-  //  var thePixelFormat = MTLPixelFormat.depth32Float // could be bgra8Unorm_srgb
-  public var scenex = SCNScene()
-  var cic : CIContext
+  public let scenex = SCNScene()
+  static let cic = CIContext(mtlDevice: device)
+  static let device = MTLCreateSystemDefaultDevice()!
 
-  var frameTexture : MTLTexture?
+  static var frameTexture : MTLTexture?
+
+  var thePixelFormat = MTLPixelFormat.bgra8Unorm   // could be bgra8Unorm_srgb
   var region : MTLRegion?
 
   public init() {
-    cic = CIContext(mtlDevice: device)
+    scenex.background.contents = Self.frameTexture
   }
 
-  private func setupTexture(_ s : CGSize) {
+  private func setupTexture(_ s : CGSize) -> MTLTexture {
     log.debug("\(#function)")
     let w = Int(s.width)
     let h = Int(s.height)
 
-    if frameTexture == nil || frameTexture?.height != h || frameTexture?.width != w {
-    log.debug("allocating texture \(w)x\(h)")
-    let mtd = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: thePixelFormat, width: w, height: h, mipmapped: false)
+    let ft = Self.frameTexture
 
-    // Need this for AR.  Not needed for Camera
-    mtd.usage = [.shaderRead, .shaderWrite] // .pixelFormatView
+    if ft == nil || ft?.height != h || ft?.width != w {
+      log.debug("allocating texture \(w)x\(h)")
 
-    let tx = device.makeTexture(descriptor: mtd)
-    tx?.label = "texture for scene"
-    tx?.setPurgeableState(.keepCurrent) // .nonVolatile
+      let mtd = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: thePixelFormat, width: w, height: h, mipmapped: false)
 
-    scenex.background.contents = nil
+      // Need this for AR.  Not needed for Camera
+      mtd.usage = [.shaderRead, .shaderWrite] // .pixelFormatView
 
-    region = MTLRegionMake2D(0, 0, mtd.width, mtd.height)
-    frameTexture = tx
+      let tx = Self.device.makeTexture(descriptor: mtd)
+      tx?.label = "texture for scene"
+      tx?.setPurgeableState(.keepCurrent) // .nonVolatile
 
-    scenex.background.contents = frameTexture
+      scenex.background.contents = nil
+
+      region = MTLRegionMake2D(0, 0, mtd.width, mtd.height)
+      Self.frameTexture = tx
+
+      scenex.background.contents = tx
 
 #if os(macOS) || targetEnvironment(macCatalyst)
-    // since the built in video mirroring seems to only work on the preview layer, and the preview layer doesn't work on ios,
-    // I wind up manually doing the mirroring on macOS
-    scenex.background.contentsTransform = SCNMatrix4MakeScale(-1, 1, 1)
+      // since the built in video mirroring seems to only work on the preview layer, and the preview layer doesn't work on ios,
+      // I wind up manually doing the mirroring on macOS
+      scenex.background.contentsTransform = SCNMatrix4MakeScale(-1, 1, 1)
 #endif
 
-/*      #if os(macOS)
-      let pi = CGFloat.pi/2
-      #else
-      let pi = Float.pi / 2
-      #endif
-      depthScene.background.contentsTransform = SCNMatrix4MakeRotation( pi, 0, 0, 1)
-*/
-    // this when AR
-    //    scenex.background.contentsTransform = SCNMatrix4MakeScale(1, -1, 1) // left-right and up-down mirroring when AR
+    }
+    return Self.frameTexture!
   }
-}
 
   // I don't use the front camera -- it can't focus
   public func updateTextureBuffer(_ pixelBuffer : CVPixelBuffer) {
     let bpr = CVPixelBufferGetBytesPerRow(pixelBuffer)
 
-    if frameTexture == nil || frameTexture!.width != CVPixelBufferGetWidth(pixelBuffer) || frameTexture!.height != CVPixelBufferGetHeight(pixelBuffer) {
-      setupTexture( CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer)) )
+    var ft = Self.frameTexture
+    if ft == nil || ft!.width != CVPixelBufferGetWidth(pixelBuffer) || ft!.height != CVPixelBufferGetHeight(pixelBuffer) {
+      ft = setupTexture( CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer)) )
     }
     CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
     if let dd = CVPixelBufferGetBaseAddress(pixelBuffer) {
-      frameTexture!.replace(region: region!, mipmapLevel: 0, withBytes: dd, bytesPerRow: bpr)
+      ft!.replace(region: region!, mipmapLevel: 0, withBytes: dd, bytesPerRow: bpr)
       CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly);
     }
     CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly)
@@ -78,11 +75,13 @@ public class TextureUpdater : @unchecked Sendable {
   public func updateTextureImage(_ d : CIImage) {
     let p = d
     let siz = p.extent.size
-    if frameTexture == nil || CGFloat(frameTexture!.width) != siz.width || CGFloat(frameTexture!.height) != siz.height {
+    var ft = Self.frameTexture
+    if ft == nil || CGFloat(ft!.width) != siz.width || CGFloat(ft!.height) != siz.height {
       log.debug("setup texture \(siz.width)x\(siz.height)")
-      setupTexture(siz)
+      ft = setupTexture(siz)
     }
-    cic.render(p, to: frameTexture!, commandBuffer: nil, bounds: p.extent, colorSpace: CGColorSpace(name: CGColorSpace.linearSRGB)! )
+    Self.cic.render(p, to: ft!, commandBuffer: nil, bounds: p.extent, colorSpace: CGColorSpace(name: CGColorSpace.linearSRGB)! )
   }
 
 }
+

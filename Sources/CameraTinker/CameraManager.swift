@@ -12,8 +12,6 @@ import CoreImage.CIFilterBuiltins
 import Vision
 
 fileprivate let localLog = Logger()
-public let device = MTLCreateSystemDefaultDevice()!
-let cic = CIContext(mtlDevice: device)
 
 #if canImport(AppKit)
 import AppKit
@@ -23,11 +21,13 @@ import AppKit
 import UIKit
 #endif
 
+/*
 #if os(macOS)
 public typealias DeviceOrientation = FakeOrientation
 #elseif os(iOS)
 public typealias DeviceOrientation = UIDeviceOrientation
 #endif
+*/
 
 public let ubiquityStash = "iCloud.software.tinker.stash"
 
@@ -55,22 +55,26 @@ final public class CameraManager<T : RecognizerProtocol> : NSObject, CameraImage
 AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDelegate,
 // FIXME: I need to check this
 @unchecked Sendable {
-  public var textureUpdater = TextureUpdater()
-  
-  var stabilizer = SceneStabilizer()
-  public var aspect : CGSize
-
   public typealias CameraData = ImageWithDepth
-  
+
+  public let textureUpdater = TextureUpdater()
+  let stabilizer = SceneStabilizer()
+
+  public var aspect : CGSize
+  public var camera : AVCaptureDevice?
+  public var recognizer : T
+
   public func start() {
     startMonitoring()
   }
 
-  @MainActor public func updateTexture(_ d: CameraData) async {
+  public func updateTexture(_ d: CameraData) {
     if let p = d.image.pixelBuffer {
       textureUpdater.updateTextureBuffer(p)
     }
   }
+
+  public var isAR : Bool = false
   
   public func resume() {
     startMonitoring()
@@ -80,31 +84,25 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
     stopMonitoring()
   }
   
-  func setAspect() {
+  private func setAspect() {
     if let camera = camera {
     aspect = CMVideoFormatDescriptionGetPresentationDimensions(camera.activeFormat.formatDescription, usePixelAspectRatio: true, useCleanAperture: true)
-    print("camera size: \(aspect)")
+//    print("camera size: \(aspect)")
     }
   }
 
-  public var camera : AVCaptureDevice?
-//      CameraPicker(cameraName: $cameraName).device // cameraNamed(cameraName)
-
-  
-//  @AppStorage("camera name") var cameraName : String = "no camera"
-  
-  public var recognizer : T
-  
-  @MainActor public init(_ c : String, recognizer r : T) {
+  public init(_ c : String, recognizer r : T) {
     recognizer = r
     aspect = CGSize.zero
     super.init()
     changeCamera(c)
     setAspect()
   }
-  
+
+
+  /*
 #if os(iOS)
-  @MainActor static public var currentOrientation : DeviceOrientation {
+  static public var currentOrientation : DeviceOrientation {
     get {
       let z = UIDevice.current.orientation; return z.isValidInterfaceOrientation ? z : .portrait
     }
@@ -116,7 +114,9 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
     }
   }
 #endif
-  
+*/
+
+
   let captureSession = AVCaptureSession()
   let videoQueue = DispatchQueue(label: "metadata object q")
   let myVideoDataOutput = AVCaptureVideoDataOutput()
@@ -146,15 +146,15 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
       
       let iid = ImageWithDepth(ciImage)
       
-      if await isSceneStable(iid) {
-        await self.recognizer.scanImage( iid )
+      if isSceneStable(iid) {
+        self.recognizer.scanImage( iid )
       }
     }
   }
   
-  public func isSceneStable( _ d : CameraData) async -> Bool {
+  public func isSceneStable( _ d : CameraData) -> Bool {
     if let dd = d.image.pixelBuffer {
-      return await stabilizer.isSceneStable(pixelBuffer: dd)
+      return stabilizer.isSceneStable(pixelBuffer: dd)
     } else {
       return false
     }
@@ -190,10 +190,8 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
       let iwd = ImageWithDepth(theImage, depth: syncedDepthData.depthData)
       textureUpdater.updateTextureBuffer(videoPixelBuffer)
 
-      Task.detached {
-        if await self.stabilizer.isSceneStable(pixelBuffer: videoPixelBuffer) {
-          await self.recognizer.scanImage( iwd )
-        }
+        if self.stabilizer.isSceneStable(pixelBuffer: videoPixelBuffer) {
+          self.recognizer.scanImage( iwd )
       }
       
     } else if let syncedVideoData = syncedVideoDat,
@@ -205,11 +203,9 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
       let cii = CIImage(cvImageBuffer: videoPixelBuffer)
       let iwd = ImageWithDepth( cii)
 
-      Task.detached {
-        if await self.stabilizer.isSceneStable(pixelBuffer: videoPixelBuffer) {
-          await self.recognizer.scanImage( iwd )
+        if self.stabilizer.isSceneStable(pixelBuffer: videoPixelBuffer) {
+          self.recognizer.scanImage( iwd )
         }
-      }
     } else {
       // here I would have depth data but not image data
       // I guess I ignore this condition -- I wouldn't be able to get an image
@@ -247,7 +243,7 @@ extension CameraManager {
     
     // FIXME: ??
     if let selectedFormat = /* lookupView.activeFormat */  formatWithHighestResolution(lookupView) { // this is a depth format
-      print("selected format \(selectedFormat)")
+//      print("selected format \(selectedFormat)")
       let depthFormats = selectedFormat.supportedDepthDataFormats
       let depth32formats = depthFormats.filter {
         CMFormatDescriptionGetMediaSubType($0.formatDescription) == kCVPixelFormatType_DepthFloat32 // or Disparity?
@@ -303,13 +299,11 @@ extension CameraManager {
 
 extension CameraManager {
   
-  public func processFrame(_ d : CameraData) async {
-    await recognizer.scanImage( d )
+  public func processFrame(_ d : CameraData) {
+      recognizer.scanImage( d )
   }
-}
 
-extension CameraManager {
-  @MainActor public func changeCamera(_ cn : String) {
+  public func changeCamera(_ cn : String) {
     log.debug("\(#function)")
 
     guard let cam = Self.getDevice(cn) else { return }
@@ -359,8 +353,7 @@ extension CameraManager {
 #else
     let availablePixelFormats = videoDataOutput.availableVideoPixelFormatTypes
 #endif
-    
-    
+
     if availablePixelFormats.contains(kCVPixelFormatType_32BGRA) {
       let newSettings: [String: Any]! = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA ]
       videoDataOutput.videoSettings = newSettings
@@ -390,7 +383,7 @@ extension CameraManager {
       }
       
       if let k = depthDataOutput.connection(with: .depthData), k.isEnabled {
-        k.videoOrientation = videoOrientation
+        // k.videoOrientation = videoOrientation
         
         // synchronized (with depth)
         outputSynchronizer = AVCaptureDataOutputSynchronizer(dataOutputs: [myVideoDataOutput, myDepthDataOutput]) // captureSession.outputs)
@@ -403,7 +396,11 @@ extension CameraManager {
       videoDataOutput.setSampleBufferDelegate(self, queue: videoQueue)
     }
 #endif
-    
+
+
+
+
+    /*
     var vdo : AVCaptureVideoOrientation = .portrait
     switch Self.currentOrientation {
     case .landscapeLeft: vdo = .landscapeRight
@@ -425,11 +422,14 @@ extension CameraManager {
         }
       }
     }
+     */
 
     setAspect()
   }
-  
-  @MainActor private var videoOrientation : AVCaptureVideoOrientation {
+
+
+  /*
+  private var videoOrientation : AVCaptureVideoOrientation {
     get {
       switch Self.currentOrientation {
       case .landscapeLeft:
@@ -441,15 +441,14 @@ extension CameraManager {
       }
     }
   }
+*/
 
-
-  static func getDevice(_ s : String) -> AVCaptureDevice? {
+  private static func getDevice(_ s : String) -> AVCaptureDevice? {
     let list = CameraPicker._cameraList
     if let videoCaptureDevice = list.first(where : { $0.localizedName == s })  {
       return videoCaptureDevice
     } else {
       if let a = list.first {
-//        cameraName = a.localizedName
         return a
       }
     }

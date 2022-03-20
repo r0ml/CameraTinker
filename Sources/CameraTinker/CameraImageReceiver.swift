@@ -7,17 +7,17 @@ import AVFoundation
 
 public protocol CameraImageReceiver : Sendable {
   associatedtype Recognizer : RecognizerProtocol
-  associatedtype CameraData : Actor
+  associatedtype CameraData : AnyObject
 
   var textureUpdater : TextureUpdater { get }
 
   func start()
-  @MainActor func changeCamera(_ x : String)
+  func changeCamera(_ x : String)
 
-  @MainActor func updateTexture(_ d : CameraData) async
-  func isSceneStable(_ d : CameraData) async -> Bool
+  func updateTexture(_ d : CameraData)
+  func isSceneStable(_ d : CameraData) -> Bool
 
-  func processFrame(_ d : CameraData) async
+  func processFrame(_ d : CameraData)
 
   func scene() -> SCNScene
   func resume()
@@ -25,6 +25,7 @@ public protocol CameraImageReceiver : Sendable {
 
   var recognizer : Recognizer { get }
   var aspect : CGSize { get }
+  var isAR : Bool { get }
 }
 
 extension AVCaptureDevice {

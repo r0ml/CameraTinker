@@ -5,7 +5,7 @@ import Foundation
 import AVFoundation
 import Vision
 
-actor SceneStabilizer {
+final class SceneStabilizer {
   private var transpositionHistoryPoints: [CGPoint] = [ ]
   private var previousSb: CVPixelBuffer?
   private let sequenceRequestHandler = VNSequenceRequestHandler()

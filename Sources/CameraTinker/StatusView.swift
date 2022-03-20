@@ -51,7 +51,7 @@ extension Notification {
   }
 }
 
-@MainActor public struct StatusView : View {
+public struct StatusView : View {
   private var labelColor : Color {
     get {
 #if os(iOS)

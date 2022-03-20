@@ -9,7 +9,7 @@ import Vision
 public protocol RecognizerProtocol {
 
   /** This will perform whatever image processing is desired for this recognizer */
-  func scanImage(_ ciImage: ImageWithDepth) async
+  func scanImage(_ ciImage: ImageWithDepth)
 
   /** This rectangle identifies the "sweet spot" of the preview:  the image will be clipped to that rectangle before being processed */
   var sweetSpotSize : CGSize { get }

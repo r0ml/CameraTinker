@@ -12,24 +12,24 @@ extension CGPoint {
 
 extension CGPoint {
 
-/*  // -----------------------------------------------------------
-  // Arithmetic between points
-  public static func *(left: CGPoint, right: CGPoint) -> CGPoint {
-      return CGPoint(x: left.x * right.x, y: left.y * right.y)
-    }
+  /*  // -----------------------------------------------------------
+   // Arithmetic between points
+   public static func *(left: CGPoint, right: CGPoint) -> CGPoint {
+   return CGPoint(x: left.x * right.x, y: left.y * right.y)
+   }
 
-  public static func /(left: CGPoint, right: CGPoint) -> CGPoint {
-      return CGPoint(x: left.x / right.x, y: left.y / right.y)
-    }
+   public static func /(left: CGPoint, right: CGPoint) -> CGPoint {
+   return CGPoint(x: left.x / right.x, y: left.y / right.y)
+   }
 
-    public static func -(left: CGPoint, right: CGPoint) -> CGPoint {
-      return CGPoint(x: left.x - right.x, y: left.y - right.y)
-    }
+   public static func -(left: CGPoint, right: CGPoint) -> CGPoint {
+   return CGPoint(x: left.x - right.x, y: left.y - right.y)
+   }
 
-    public static func +(left: CGPoint, right: CGPoint) -> CGPoint {
-      return CGPoint(x: left.x + right.x, y: left.y + right.y)
-    }
-*/
+   public static func +(left: CGPoint, right: CGPoint) -> CGPoint {
+   return CGPoint(x: left.x + right.x, y: left.y + right.y)
+   }
+   */
   // -----------------------------------------------------------
   // Arithmetic between CGPoint and CGSize
   public static func *(left: CGPoint, right: CGSize) -> CGPoint {
@@ -48,33 +48,6 @@ extension CGPoint {
     return CGPoint(x: left.x - right.width, y: left.y - right.height)
   }
 
-  /*
-  // -------------------------------------------------------------
-  // Arithmetic between CGPoint and CGFloat
-  public static func *(left: CGPoint, right: CGFloat) -> CGPoint {
-      return CGPoint(x: left.x * right, y: left.y * right)
-    }
-
-  public static func /(left: CGPoint, right: CGFloat) -> CGPoint {
-      return CGPoint(x: left.x / right, y: left.y / right)
-    }
-
-  public static func +(left: CGPoint, right: CGFloat) -> CGPoint {
-      return CGPoint(x: left.x + right, y: left.y + right)
-    }
-
-  public static func -(left: CGPoint, right: CGFloat) -> CGPoint {
-      return CGPoint(x: left.x - right, y: left.y - right)
-    }
-
-
-  // --------------------------------------------------------------
-  public init(_ z : CGFloat) {
-      self.init(x: z, y: z)
-    }
-
-*/
-  
   public func distance(to: CGPoint) -> CGFloat {
     let j = self.x - to.x
     let k = self.y - to.y
