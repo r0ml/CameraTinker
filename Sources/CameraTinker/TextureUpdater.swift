@@ -7,18 +7,24 @@ import SceneKit
 import CoreMedia
 
 public class TextureUpdater : @unchecked Sendable {
-  public let scenex = SCNScene()
+  private let scenex = SCNScene()
   static let cic = CIContext(mtlDevice: device)
   static let device = MTLCreateSystemDefaultDevice()!
 
+  /* These change with camera output -- which is very rarely -- so I make them static */
   static var frameTexture : MTLTexture?
+  static var thePixelFormat = MTLPixelFormat.bgra8Unorm   // could be bgra8Unorm_srgb
+  static var region : MTLRegion?
 
-  var thePixelFormat = MTLPixelFormat.bgra8Unorm   // could be bgra8Unorm_srgb
-  var region : MTLRegion?
-
-  public init() {
+  public func getScene() -> SCNScene {
+    scenex.background.contents = nil
     scenex.background.contents = Self.frameTexture
+    return scenex
   }
+
+  // public init() {
+  //  scenex.background.contents = Self.frameTexture
+  // }
 
   private func setupTexture(_ s : CGSize) -> MTLTexture {
     log.debug("\(#function)")
@@ -30,7 +36,7 @@ public class TextureUpdater : @unchecked Sendable {
     if ft == nil || ft?.height != h || ft?.width != w {
       log.debug("allocating texture \(w)x\(h)")
 
-      let mtd = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: thePixelFormat, width: w, height: h, mipmapped: false)
+      let mtd = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: Self.thePixelFormat, width: w, height: h, mipmapped: false)
 
       // Need this for AR.  Not needed for Camera
       mtd.usage = [.shaderRead, .shaderWrite] // .pixelFormatView
@@ -41,16 +47,20 @@ public class TextureUpdater : @unchecked Sendable {
 
       scenex.background.contents = nil
 
-      region = MTLRegionMake2D(0, 0, mtd.width, mtd.height)
+      Self.region = MTLRegionMake2D(0, 0, mtd.width, mtd.height)
       Self.frameTexture = tx
 
       scenex.background.contents = tx
 
+      /*
 #if os(macOS) || targetEnvironment(macCatalyst)
       // since the built in video mirroring seems to only work on the preview layer, and the preview layer doesn't work on ios,
       // I wind up manually doing the mirroring on macOS
       scenex.background.contentsTransform = SCNMatrix4MakeScale(-1, 1, 1)
+#else
+    //  scenex.background.contentsTransform = SCNMatrix4MakeRotation(Float.pi/2, 0, 0, 1)
 #endif
+       */
 
     }
     return Self.frameTexture!
@@ -66,7 +76,7 @@ public class TextureUpdater : @unchecked Sendable {
     }
     CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
     if let dd = CVPixelBufferGetBaseAddress(pixelBuffer),
-       let reg = region,
+       let reg = Self.region,
        let ft = ft {
       ft.replace(region: reg, mipmapLevel: 0, withBytes: dd, bytesPerRow: bpr)
     }

@@ -118,9 +118,13 @@ public struct PreviewView<U : CameraImageReceiver> : View {
         sceneView
       }.onChange(of: cameraName) {z in
         imageReceiver.changeCamera(cameraName)
-      }.onAppear {
-        imageReceiver.start()
       }
+/*      .onAppear {
+        imageReceiver.start()
+      }.onDisappear {
+        imageReceiver.pause()
+      }
+ */
   }
 
   var sceneView : some View {
@@ -138,10 +142,10 @@ public struct PreviewView<U : CameraImageReceiver> : View {
                       : aspect
                       , contentMode: .fit)
         .onAppear {
-          Task {
-            await getState()
+//          Task {
+//            await getState()
             imageReceiver.resume()
-          }
+//          }
         }
         .onDisappear {
           imageReceiver.pause()

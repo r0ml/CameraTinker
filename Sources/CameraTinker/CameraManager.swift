@@ -31,6 +31,7 @@ public typealias DeviceOrientation = UIDeviceOrientation
 
 public let ubiquityStash = "iCloud.software.tinker.stash"
 
+/*
 public enum FakeOrientation {
   case portrait
   case landscape
@@ -45,6 +46,7 @@ public enum FakeOrientation {
     return true
   }}
 }
+*/
 
 #if os(macOS)
 protocol AVCaptureDataOutputSynchronizerDelegate {
@@ -98,6 +100,7 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
   public init(_ c : String, recognizer r : T) {
     recognizer = r
     aspect = CGSize.zero
+    camera = Self.getDevice(c)
     super.init()
     changeCamera(c)
     setAspect()
@@ -131,7 +134,7 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
 
   let log = Logger()
   
-  let scenex = SCNScene()
+//  let scenex = SCNScene()
   public var useDepth = false
 
   public func setUseDepth(_ x : Bool) { useDepth = x }
@@ -147,7 +150,14 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
   public func captureOutput(_ output: AVCaptureOutput, didOutput: CMSampleBuffer, from: AVCaptureConnection) {
     guard let sb = CMSampleBufferGetImageBuffer(didOutput) else { return }
     let ciImage = CIImage(cvImageBuffer: sb )
-    textureUpdater.updateTextureBuffer(sb) // updating the texture is done to display the camera preview
+    #if os(macOS) || targetEnvironment(macCatalyst)
+      .oriented(.down)
+    #else
+      .oriented(.rightMirrored)
+    #endif
+
+//    textureUpdater.updateTextureBuffer(sb) // updating the texture is done to display the camera preview
+    textureUpdater.updateTextureImage(ciImage)
 
     Task {
       if await self.recognizer.isBusy() {
@@ -163,11 +173,7 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
   }
   
   public func isSceneStable( _ d : CameraData) -> Bool {
-    if let dd = d.image.pixelBuffer {
-      return stabilizer.isSceneStable(pixelBuffer: dd)
-    } else {
-      return false
-    }
+    return stabilizer.isSceneStable(ciImage: d.image)
   }
   
 #if os(iOS)
@@ -239,7 +245,7 @@ extension CameraManager {
   }
   
   public func scene() -> SCNScene {
-    return textureUpdater.scenex
+    return textureUpdater.getScene()
   }
 
   // ==============================================================================
@@ -314,9 +320,11 @@ extension CameraManager {
   }
 
   public func changeCamera(_ cn : String) {
-    log.debug("\(#function)")
 
     guard let cam = Self.getDevice(cn) else { return }
+//    guard camera != cam || captureSession.connections.count == 0 else { return }
+
+    log.debug("\(#function)")
     camera = cam
 
     // if the camera changed, the inputs are different -- but presumably the outputs are still OK
@@ -367,7 +375,13 @@ extension CameraManager {
     if availablePixelFormats.contains(kCVPixelFormatType_32BGRA) {
       let newSettings: [String: Any]! = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA ]
       videoDataOutput.videoSettings = newSettings
-      textureUpdater.thePixelFormat = MTLPixelFormat.bgra8Unorm_srgb
+
+      #if os(macOS) || targetEnvironment(macCatalyst)
+      TextureUpdater.thePixelFormat = MTLPixelFormat.bgra8Unorm                          // bgra8Unorm_srgb
+      #else
+      TextureUpdater.thePixelFormat = MTLPixelFormat.bgra8Unorm_srgb                          // bgra8Unorm_srgb
+      #endif
+
     } else {
       log.error("I didn't find a pixel format I know what to do with")
     }

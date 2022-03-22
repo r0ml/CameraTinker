@@ -309,7 +309,7 @@ struct QuadrilateralView : View {
           Path(self.corners.path)
             .stroke(style: StrokeStyle(lineWidth: 2, lineCap: .square, lineJoin: .round))
             .foregroundColor(Color.green)
-          ForEach(0..<CornerPosition.allCases.count) { i in
+          ForEach(0..<CornerPosition.allCases.count, id: \.self) { i in
             ZStack {
               CornerHandle(length: 60, corner: CornerPosition.allCases[i],
                            radius: 25, angles: wedgeAngles(i) )

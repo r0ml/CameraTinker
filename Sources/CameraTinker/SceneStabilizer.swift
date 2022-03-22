@@ -4,10 +4,12 @@
 import Foundation
 import AVFoundation
 import Vision
+import CoreImage
 
 final class SceneStabilizer {
   private var transpositionHistoryPoints: [CGPoint] = [ ]
   private var previousSb: CVPixelBuffer?
+  private var previousCi: CIImage?
   private let sequenceRequestHandler = VNSequenceRequestHandler()
 
   let maximumHistoryLength = 15
@@ -41,6 +43,35 @@ final class SceneStabilizer {
     return false
   }
 
+
+  func isSceneStable(ciImage ci : CIImage) -> Bool {
+    guard previousCi != nil else {
+      previousCi = ci
+      self.resetTranspositionHistory()
+      return false
+    }
+
+    let registrationRequest = VNTranslationalImageRegistrationRequest(targetedCIImage: ci)
+
+    do {
+      try sequenceRequestHandler.perform([ registrationRequest ], on: previousCi!)
+    } catch let error as NSError {
+      log.error("Failed to process image registration request for stabilizer: \(error.localizedDescription).")
+      return false
+    }
+
+    previousCi = ci
+
+    if let results = registrationRequest.results {
+      if let alignmentObservation = results.first {
+        let alignmentTransform = alignmentObservation.alignmentTransform
+        self.recordTransposition(CGPoint(x: alignmentTransform.tx, y: alignmentTransform.ty))
+      }
+    }
+    return self.sceneStabilityAchieved()
+  }
+
+
   func isSceneStable(pixelBuffer sb : CVPixelBuffer) -> Bool {
     guard previousSb != nil else {
       previousSb = sb
@@ -49,6 +80,7 @@ final class SceneStabilizer {
     }
 
     let registrationRequest = VNTranslationalImageRegistrationRequest(targetedCVPixelBuffer: sb)
+
     do {
       try sequenceRequestHandler.perform([ registrationRequest ], on: previousSb!)
     } catch let error as NSError {
@@ -66,4 +98,5 @@ final class SceneStabilizer {
     }
     return self.sceneStabilityAchieved()
   }
+ 
 }

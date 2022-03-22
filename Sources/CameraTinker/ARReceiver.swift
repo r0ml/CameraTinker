@@ -138,7 +138,7 @@ public final class ARReceiver<T : RecognizerProtocol>: NSObject, ARSessionDelega
   }
 
   public func scene() -> SCNScene {
-    return textureUpdater.scenex
+    return textureUpdater.getScene()
   }
 
   public func updateTexture(_ d : CameraData) {
