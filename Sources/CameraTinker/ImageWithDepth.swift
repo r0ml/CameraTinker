@@ -11,7 +11,7 @@ import AVFoundation
 /// with the depth data for a modified image.  I was doing this for capturing spines to improve recognition of the boundary -- but once I have done the clipping,
 /// I want to use the original image.  The previous solution involved creating a modified image -- but then the clipping happened on that modified image and
 /// the original image was lost.
-public actor ImageWithDepth {
+public actor ImageWithDepth : Sendable {
   nonisolated public let image : CIImage
   public var depthData : AVDepthData? {
     if let dd = _depthData { return dd }
@@ -229,7 +229,8 @@ public actor ImageWithDepth {
   }
   */
 
-  public func savePicture() {
+  /// This can be used to save a picture at a known location, or also to append a timestamp to the name for storing multiple pictures disambiguated by time.
+  public func savePicture(_ pfx : String, timeStamped: Bool) {
     let z3 = FileManager.default.url(forUbiquityContainerIdentifier: ubiquityStash)!.appendingPathComponent("Documents")
     if !FileManager.default.fileExists(atPath: z3.path) {
       try? FileManager.default.createDirectory(at: z3, withIntermediateDirectories: true, attributes: nil)
@@ -244,7 +245,8 @@ public actor ImageWithDepth {
     dd2.dateFormat = "yyyy-MM-dd"
     //    dd2.timeStyle = .none
     let mmx = dd2.string(from: dd)
-    let z4 = z3.appendingPathComponent("im-\(mmx) \(mmm).heif")
+    let fn = timeStamped ? "\(pfx)-\(mmx) \(mmm).heif" : "\(pfx).heif"
+    let z4 = z3.appendingPathComponent(fn)
     
     let outputURL = z4 // URL.init(string: "test")
     guard let cgImageDestination = CGImageDestinationCreateWithURL(outputURL as CFURL, UTType.heic.identifier as CFString, 1, nil) else {
