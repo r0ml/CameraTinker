@@ -16,9 +16,19 @@ public class TextureUpdater : @unchecked Sendable {
   static var thePixelFormat = MTLPixelFormat.bgra8Unorm   // could be bgra8Unorm_srgb
   static var region : MTLRegion?
 
+
+  public init() {
+    
+  }
+
   public func getScene() -> SCNScene {
     scenex.background.contents = nil
     scenex.background.contents = Self.frameTexture
+
+  #if os(macOS) || targetEnvironment(macCatalyst)
+    scenex.background.contentsTransform = SCNMatrix4MakeScale(-1, -1, 1)
+    #endif
+
     return scenex
   }
 

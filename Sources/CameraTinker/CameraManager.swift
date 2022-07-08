@@ -29,7 +29,8 @@ public typealias DeviceOrientation = UIDeviceOrientation
 #endif
 */
 
-public let ubiquityStash = "iCloud.software.tinker.stash"
+public let tinkerUbiquityStash = "iCloud.software.tinker.stash"
+public let ubiquityStash = "iCloud.net.r0ml.Librorum"
 
 /*
 public enum FakeOrientation {
@@ -97,13 +98,41 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
     }
   }
 
+  #if os(iOS)
+
+  var myScene : UIWindowScene
+  var orientation : UIInterfaceOrientation
+  #endif
+
   public init(_ c : String, recognizer r : T) {
     recognizer = r
     aspect = CGSize.zero
     camera = Self.getDevice(c)
+
+    #if os(iOS)
+    myScene = UIApplication.shared.connectedScenes
+//            .filter({$0.activationState == .foregroundActive})
+            .compactMap({$0 as? UIWindowScene})
+            .first!
+    orientation = myScene.interfaceOrientation
+    #endif
+
     super.init()
     changeCamera(c)
     setAspect()
+
+    #if os(iOS)
+    UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+    NotificationCenter.default.addObserver(forName: UIDevice.orientationDidChangeNotification, object: nil, queue: nil, using:
+    { notification in
+
+    // when it is upside down, the scene orientation shows as whatever the last scene was, but the UIDevice orientation ((notification.object as! UIDevice).orientation)  shows as portraitUpsideDown
+
+
+      self.orientation = self.myScene.interfaceOrientation
+    })
+    #endif
+
   }
 
 
@@ -149,23 +178,58 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
   /// This is the delegate used when I'm not capturing depth data.  The image data is sent to the recognizer
   public func captureOutput(_ output: AVCaptureOutput, didOutput: CMSampleBuffer, from: AVCaptureConnection) {
     guard let sb = CMSampleBufferGetImageBuffer(didOutput) else { return }
-    let ciImage = CIImage(cvImageBuffer: sb )
+
+    let cxImage = CIImage(cvImageBuffer: sb )
+    var ciImage = cxImage
+
+#if os(iOS)
+
+    // .oriented(.rightMirrored)
+//    print(output.connections[0].videoOrientation.rawValue)
+    let a = from.videoOrientation
+ //   let c = UIDevice.current.orientation
+    let b = orientation
+
+    switch b {
+    case .landscapeRight:
+      ciImage = cxImage.oriented(.downMirrored)
+    case .portrait:
+      ciImage = cxImage.oriented(.rightMirrored) // a == .landscapeRight
+    case .landscapeLeft:
+      ciImage = cxImage.oriented(.upMirrored)
+    case .portraitUpsideDown:
+      ciImage = cxImage.oriented(.leftMirrored) // This is clearly a bug -- should be .right
+    case .unknown:
+      ciImage = cxImage.oriented(.left) // What to do here?
+//    case .faceUp:
+//      ciImage = cxImage.oriented(.up)
+    default:
+      ciImage = cxImage
+      break
+    }
+
+
+  #endif
+
     #if os(macOS) || targetEnvironment(macCatalyst)
-      .oriented(.down)
-    #else
-      .oriented(.rightMirrored)
+//      .oriented(.down)
     #endif
 
 //    textureUpdater.updateTextureBuffer(sb) // updating the texture is done to display the camera preview
     textureUpdater.updateTextureImage(ciImage)
 
+
+    #if os(iOS)
+    let iid = ImageWithDepth(ciImage.oriented(.downMirrored) )  // because of the aforementionned bug -- I need to adjust for upsideDown
+    #else
+    let iid = ImageWithDepth(ciImage)
+    #endif
+
     Task {
       if await self.recognizer.isBusy() {
         return
       }
-      
-      let iid = ImageWithDepth(ciImage)
-      
+
       if isSceneStable(iid) {
         self.recognizer.scanImage( iid )
       }
@@ -192,14 +256,6 @@ AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDataOutputSynchronizerDel
       
       // here I have both image and depth data
       theImage = CIImage(cvImageBuffer: videoPixelBuffer)
-      
-      /*
-       // I stuck this in to save the camera image offline for fiddling with the algorithm
-       if grabNextFrame {
-       grabNextFrame = false
-       savePicture(syncedDepthData.depthData, theImage)
-       }
-       */
       
       // One can get a CIImage from the depthData, but there is no way to create the AVDepthData from a CIImage !!
       // So, store the AVDepthData, and create the CIImage as needed when accessed.

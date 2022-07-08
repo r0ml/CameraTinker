@@ -231,7 +231,7 @@ public actor ImageWithDepth : Sendable {
 
   /// This can be used to save a picture at a known location, or also to append a timestamp to the name for storing multiple pictures disambiguated by time.
   public func savePicture(_ pfx : String, timeStamped: Bool) {
-    let z3 = FileManager.default.url(forUbiquityContainerIdentifier: ubiquityStash)!.appendingPathComponent("Documents")
+     let z3 = FileManager.default.url(forUbiquityContainerIdentifier: ubiquityStash)!.appendingPathComponent("Documents")
     if !FileManager.default.fileExists(atPath: z3.path) {
       try? FileManager.default.createDirectory(at: z3, withIntermediateDirectories: true, attributes: nil)
     }
@@ -253,11 +253,12 @@ public actor ImageWithDepth : Sendable {
       return
     }
     
-    let context = CIContext(options: nil)
+    let context = CIContext(options: [:])
     //let dict: NSDictionary = [
     // kCGImageDestinationLossyCompressionQuality: 1.0,
     //   kCGImagePropertyIsFloat: true,
     // ]
+
     if let cgImage: CGImage = context.createCGImage(image, from: image.extent) {
       CGImageDestinationAddImage(cgImageDestination, cgImage, nil)
     }
@@ -268,5 +269,33 @@ public actor ImageWithDepth : Sendable {
       CGImageDestinationAddAuxiliaryDataInfo(cgImageDestination, auxDataType!, auxData! as CFDictionary)
     }
     CGImageDestinationFinalize(cgImageDestination)
+  }
+
+  convenience public init?(filename s : String) {
+    var z3 = FileManager.default.url(forUbiquityContainerIdentifier: ubiquityStash)!.appendingPathComponent("Documents")
+    z3.appendPathComponent(s)
+    self.init(url: z3)
+  }
+
+  public init?(url: URL) {
+    if
+      let source = CGImageSourceCreateWithURL(url as CFURL, nil) {
+      if let auxiliaryInfoDict = CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, kCGImageAuxiliaryDataTypeDepth) as? [AnyHashable: Any],  // or Disparity
+         let depthData = try? AVDepthData(fromDictionaryRepresentation: auxiliaryInfoDict)
+      {
+        self._depthData = depthData
+        self._depth = nil
+      } else {
+        self._depthData = nil
+        self._depth = nil
+      }
+      if let i = CGImageSourceCreateImageAtIndex(source, 0, nil) {
+        self.image = CIImage(cgImage: i)
+      } else {
+        return nil
+      }
+    } else {
+      return nil
+    }
   }
 }

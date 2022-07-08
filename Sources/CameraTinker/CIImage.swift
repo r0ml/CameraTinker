@@ -42,7 +42,39 @@ extension CIImage {
     }
   }
 */
-  
+
+  public var floats : [[SIMD4<Float>]]? {
+    get {
+      let wh = self.extent
+      var pb : CVPixelBuffer? = nil
+      CVPixelBufferCreate(kCFAllocatorDefault, Int(wh.width), Int(wh.height), kCVPixelFormatType_32ARGB, nil, &pb)
+      if let pb = pb {
+        let flags = CVPixelBufferLockFlags(rawValue: 0)
+        CVPixelBufferLockBaseAddress(pb, flags)
+        ctx.render(self, to: pb)
+
+        var byteBuffer = unsafeBitCast(CVPixelBufferGetBaseAddress(pb), to: UnsafeMutablePointer<SIMD4<Float32>>.self)
+        var out : [[SIMD4<Float>]] = []
+        let bpr = CVPixelBufferGetBytesPerRow(pb)
+
+        for _ in 0..<Int(wh.height) {
+          var rr = [SIMD4<Float>]()
+          for col in 0..<Int(wh.width) {
+            rr.append(byteBuffer[col])
+          }
+          byteBuffer = byteBuffer.advanced(by: bpr)
+          out.append(rr)
+        }
+        CVPixelBufferUnlockBaseAddress(pb, flags)
+        return out
+      } else {
+        return nil
+      }
+
+    }
+  }
+
+
   public static func named(_ name: String) -> CIImage? {
     #if os(macOS)
     if let im = NSImage(named: name),
@@ -113,4 +145,17 @@ extension Image {
     self.init(nsImage: image)
   }
 #endif
+}
+
+
+
+extension SIMD4 {
+  var debugDescription : String {
+    return "SIMD4(\(self.x),\(self.y),\(self.z),\(self.w))"
+  }
+
+  var description : String {
+    return "SIMD4(\(self.x),\(self.y),\(self.z),\(self.w))"
+  }
+
 }

@@ -73,6 +73,7 @@ public struct ImageCroppingView : View {
 
     HStack {
     VStack {
+      HStack {
       xImage(image: cropped ?? original )
         .overlay(
           GeometryReader { (gg : GeometryProxy) -> QuadrilateralView in
@@ -84,6 +85,12 @@ public struct ImageCroppingView : View {
         )
         .padding(25)
 
+        Image(image: XImage(ciImage: tempCandidate))
+          .resizable()
+          .scaledToFit()
+          .frame(maxHeight: 500)
+      }
+      
 
       // This changes the picture I'm working with
       /*      .onDrop(of: [.fileURL], isTargeted: $target) {
@@ -161,9 +168,6 @@ public struct ImageCroppingView : View {
         }.buttonStyle(MyButtonStyle(bgColor: .blue))
       }
     }
-      Image(image: XImage(ciImage: tempCandidate))
-        .resizable()
-        .scaledToFit()
     }
   }
 }
